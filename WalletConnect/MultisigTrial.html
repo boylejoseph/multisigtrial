@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MultiSig Wallet Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .transaction-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .transaction-pending {
+            border-left: 4px solid orange;
+        }
+        .transaction-executed {
+            border-left: 4px solid green;
+        }
+        #connectButton {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .tx-form {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .tx-form input, .tx-form button {
+            margin: 10px 0;
+            padding: 8px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .tx-form button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>MultiSig Wallet Transaction Tracker</h1>
+    <button id="connectButton">Connect Wallet</button>
+
+    <div class="tx-form">
+        <h2>Submit Transaction</h2>
+        <input type="number" id="nonceInput" placeholder="Nonce">
+        <input type="text" id="toInput" placeholder="Recipient Address">
+        <input type="number" id="valueInput" placeholder="Value (wei)">
+        <input type="text" id="dataInput" placeholder="Data (optional, hex)">
+        <button id="submitTxButton">Submit Transaction</button>
+    </div>
+
+    <div id="transactionContainer"></div>
+
+    <script>
+        // Contract details
+        const CONTRACT_ADDRESS = '0x655af9aab14a277ef7812797bd1794da34d397bc';
+        const CONTRACT_ABI = [
+            "function executeTransaction(uint256 nonce, address to, uint256 value, bytes calldata data) external",
+            "event TransactionApproved(bytes32 indexed txHash, address indexed approver, uint8 currentApprovals)",
+            "event TransactionEvent(bytes32 indexed txId, address indexed to, uint nonce, bytes data)"
+        ];
+
+        // State to track transactions
+        const transactions = {};
+
+        // Elements
+        const connectButton = document.getElementById('connectButton');
+        const transactionContainer = document.getElementById('transactionContainer');
+        const nonceInput = document.getElementById('nonceInput');
+        const toInput = document.getElementById('toInput');
+        const valueInput = document.getElementById('valueInput');
+        const dataInput = document.getElementById('dataInput');
+        const submitTxButton = document.getElementById('submitTxButton');
+
+        let signer = null;
+        let contract = null;
+
+        // Connect wallet and setup contract
+        async function connectWallet() {
+            if (!window.ethereum) {
+                alert('MetaMask not found!');
+                return;
+            }
+
+            try {
+                // Request account access
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                
+                // Create provider and signer
+                const provider = new ethers.BrowserProvider(window.ethereum);
+                signer = await provider.getSigner();
+
+                // Create contract instance
+                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+                // Listen for TransactionApproved events
+                contract.on('TransactionApproved', (txHash, approver, currentApprovals) => {
+                    const txHashStr = txHash.toString();
+                    
+                    if (!transactions[txHashStr]) {
+                        transactions[txHashStr] = {
+                            approvals: Number(currentApprovals),
+                            approvers: [approver],
+                            status: 'Pending'
+                        };
+                    } else {
+                        transactions[txHashStr].approvals = Number(currentApprovals);
+                        transactions[txHashStr].approvers.push(approver);
+                    }
+
+                    renderTransactions();
+                });
+
+                // Listen for TransactionEvent (completed transactions)
+                contract.on('TransactionEvent', (txId) => {
+                    const txIdStr = txId.toString();
+                    
+                    if (transactions[txIdStr]) {
+                        transactions[txIdStr].status = 'Executed';
+                        renderTransactions();
+                    }
+                });
+
+                connectButton.textContent = 'Connected';
+                connectButton.disabled = true;
+                submitTxButton.disabled = false;
+
+            } catch (error) {
+                console.error('Connection failed', error);
+                alert('Failed to connect wallet');
+            }
+        }
+
+        // Submit transaction
+        async function submitTransaction() {
+            if (!contract) {
+                alert('Please connect wallet first');
+                return;
+            }
+
+            try {
+                const nonce = BigInt(nonceInput.value);
+                const to = toInput.value;
+                const value = BigInt(valueInput.value || '0');
+                const data = dataInput.value || '0x';
+
+                const tx = await contract.executeTransaction(nonce, to, value, data);
+                await tx.wait();
+
+                // Clear inputs
+                nonceInput.value = '';
+                toInput.value = '';
+                valueInput.value = '';
+                dataInput.value = '';
+
+                alert('Transaction submitted successfully!');
+            } catch (error) {
+                console.error('Transaction submission failed', error);
+                alert(`Transaction failed: ${error.message}`);
+            }
+        }
+
+        // Render transactions to the DOM
+        function renderTransactions() {
+            transactionContainer.innerHTML = Object.entries(transactions).map(([txHash, txDetails]) => `
+                <div class="transaction-card ${txDetails.status === 'Executed' ? 'transaction-executed' : 'transaction-pending'}">
+                    <div><strong>Transaction Hash:</strong> ${txHash.substring(0,10)}...</div>
+                    <div><strong>Approvals:</strong> ${txDetails.approvals}/2 
+                        ${txDetails.status === 'Executed' ? '✅' : ''}</div>
+                    <div><strong>Approvers:</strong> ${txDetails.approvers.join(', ')}</div>
+                    <div><strong>Status:</strong> ${txDetails.status}</div>
+                </div>
+            `).join('');
+        }
+
+        // Event listeners
+        connectButton.addEventListener('click', connectWallet);
+        submitTxButton.addEventListener('click', submitTransaction);
+        
+        // Initially disable submit button
+        submitTxButton.disabled = true;
+    </script>
+</body>
+</html>
