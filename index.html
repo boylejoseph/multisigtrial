@@ -78,8 +78,35 @@
             "event TransactionEvent(bytes32 indexed txId, address indexed to, uint nonce, bytes data)"
         ];
 
-        // State to track transactions
-        const transactions = {};
+        // Persistent storage for transactions
+        class TransactionStore {
+            constructor() {
+                this.storageKey = 'multiSigTransactions';
+            }
+
+            getTransactions() {
+                const stored = localStorage.getItem(this.storageKey);
+                return stored ? JSON.parse(stored) : {};
+            }
+
+            saveTransactions(transactions) {
+                localStorage.setItem(this.storageKey, JSON.stringify(transactions));
+            }
+
+            updateTransaction(txHash, updates) {
+                const transactions = this.getTransactions();
+                transactions[txHash] = {
+                    ...(transactions[txHash] || {}),
+                    ...updates
+                };
+                this.saveTransactions(transactions);
+                return transactions;
+            }
+        }
+
+        // Initialize transaction store
+        const transactionStore = new TransactionStore();
+        let transactions = transactionStore.getTransactions();
 
         // Elements
         const connectButton = document.getElementById('connectButton');
@@ -115,33 +142,38 @@
                 contract.on('TransactionApproved', (txHash, approver, currentApprovals) => {
                     const txHashStr = txHash.toString();
                     
-                    if (!transactions[txHashStr]) {
-                        transactions[txHashStr] = {
-                            approvals: Number(currentApprovals),
-                            approvers: [approver],
-                            status: 'Pending'
-                        };
-                    } else {
-                        transactions[txHashStr].approvals = Number(currentApprovals);
-                        transactions[txHashStr].approvers.push(approver);
-                    }
+                    transactions = transactionStore.updateTransaction(txHashStr, {
+                        approvals: Number(currentApprovals),
+                        approvers: [...new Set([
+                            ...(transactions[txHashStr]?.approvers || []), 
+                            approver
+                        ])],
+                        status: 'Pending'
+                    });
 
                     renderTransactions();
                 });
 
                 // Listen for TransactionEvent (completed transactions)
-                contract.on('TransactionEvent', (txId) => {
+                contract.on('TransactionEvent', (txId, to, nonce, data) => {
                     const txIdStr = txId.toString();
                     
-                    if (transactions[txIdStr]) {
-                        transactions[txIdStr].status = 'Executed';
-                        renderTransactions();
-                    }
+                    transactions = transactionStore.updateTransaction(txIdStr, {
+                        status: 'Executed',
+                        to: to.toString(),
+                        nonce: Number(nonce),
+                        data: data.toString()
+                    });
+
+                    renderTransactions();
                 });
 
                 connectButton.textContent = 'Connected';
                 connectButton.disabled = true;
                 submitTxButton.disabled = false;
+
+                // Render existing transactions
+                renderTransactions();
 
             } catch (error) {
                 console.error('Connection failed', error);
@@ -183,10 +215,12 @@
             transactionContainer.innerHTML = Object.entries(transactions).map(([txHash, txDetails]) => `
                 <div class="transaction-card ${txDetails.status === 'Executed' ? 'transaction-executed' : 'transaction-pending'}">
                     <div><strong>Transaction Hash:</strong> ${txHash.substring(0,10)}...</div>
-                    <div><strong>Approvals:</strong> ${txDetails.approvals}/2 
+                    <div><strong>Approvals:</strong> ${txDetails.approvals || 0}/2 
                         ${txDetails.status === 'Executed' ? '✅' : ''}</div>
-                    <div><strong>Approvers:</strong> ${txDetails.approvers.join(', ')}</div>
-                    <div><strong>Status:</strong> ${txDetails.status}</div>
+                    <div><strong>Approvers:</strong> ${(txDetails.approvers || []).join(', ')}</div>
+                    <div><strong>Status:</strong> ${txDetails.status || 'Pending'}</div>
+                    ${txDetails.to ? `<div><strong>To:</strong> ${txDetails.to}</div>` : ''}
+                    ${txDetails.nonce !== undefined ? `<div><strong>Nonce:</strong> ${txDetails.nonce}</div>` : ''}
                 </div>
             `).join('');
         }
@@ -197,6 +231,9 @@
         
         // Initially disable submit button
         submitTxButton.disabled = true;
+
+        // On page load, render existing transactions from local storage
+        renderTransactions();
     </script>
 </body>
 </html>
