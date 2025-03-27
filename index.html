@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MultiSig Wallet Transaction Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.umd.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
@@ -120,6 +121,75 @@
             margin-bottom: 15px;
             text-align: center;
         }
+            @media screen and (max-width: 768px) {
+        body {
+            padding: 10px;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 95%;
+            padding: 15px;
+            margin: 0 auto;
+            border-radius: 10px;
+        }
+
+        .contract-setup,
+        .tx-form {
+            gap: 10px;
+        }
+
+        input, button {
+            font-size: 16px; /* Prevents zoom on input focus */
+            padding: 8px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        .transaction-card {
+            padding: 10px;
+            font-size: 0.85rem;
+        }
+
+        .transaction-card div {
+            margin-bottom: 3px;
+        }
+    }
+
+    /* Ensure proper scaling and prevent unwanted zooming */
+    @viewport {
+        width: device-width;
+        zoom: 1;
+    }
+
+    /* Additional mobile-specific improvements */
+    html, body {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+        -webkit-appearance: none; /* Removes default mobile styling */
+        -moz-appearance: none;
+        appearance: none;
+    }
+
+    /* Background image handling for mobile */
+    @media screen and (max-width: 768px) {
+        body {
+            background-size: cover;
+            background-position: center;
+            background-attachment: scroll; /* Can cause performance issues on mobile */
+        }
+
+        .container {
+            background: rgba(17, 34, 64, 0.9); /* Slightly more opaque on mobile */
+        }
+    }
     </style>
 </head>
 <body>
