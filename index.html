@@ -17,7 +17,7 @@
         body {
             font-family: 'Roboto', sans-serif;
             background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
-            background-image: url('pexels-maxfrancis-2246476.jpg');
+            background-image: url('../../WallPapers/pexels-eberhardgross-443446.jpg');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -44,6 +44,12 @@
             margin-bottom: 30px;
             text-transform: uppercase;
             letter-spacing: 2px;
+        }
+
+        .contract-setup {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 20px;
         }
 
         .tx-form {
@@ -104,18 +110,32 @@
             color: var(--text-secondary);
         }
 
-        #connectButton {
+        #connectButton, #setContractButton {
             width: 100%;
             margin-bottom: 20px;
+        }
+
+        .error-message {
+            color: #ff4545;
+            margin-bottom: 15px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>MultiSig Wallet Tracker</h1>
-        <button id="connectButton">Connect Wallet</button>
+        
+        <div class="contract-setup">
+            <input type="text" id="contractAddressInput" placeholder="Enter MultiSig Contract Address">
+            <button id="setContractButton">Set Contract</button>
+        </div>
 
-        <div class="tx-form">
+        <div id="errorContainer" class="error-message"></div>
+
+        <button id="connectButton" disabled>Connect Wallet</button>
+
+        <div class="tx-form" id="txFormContainer" style="display:none;">
             <h2>Submit Transaction</h2>
             <input type="text" id="toInput" placeholder="Recipient Address" required>
             <input type="number" step="0.00001" id="valueInput" placeholder="Value (ETH)" required>
@@ -128,27 +148,114 @@
     </div>
 
     <script>
-        // Contract details
-        const CONTRACT_ADDRESS = '0x655af9aab14a277ef7812797bd1794da34d397bc';
-        const CONTRACT_ABI = [
-            "function executeTransaction(uint256 nonce, address to, uint256 value, bytes calldata data) external",
-            "event TransactionApproved(bytes32 indexed txHash, address indexed approver, uint8 currentApprovals)",
-            "event TransactionEvent(bytes32 indexed txId, address indexed to, uint nonce, bytes data)"
-        ];
-
         // Global variables
         let signer = null;
         let contract = null;
         let transactions = {};
 
         // Elements
+        const contractAddressInput = document.getElementById('contractAddressInput');
+        const setContractButton = document.getElementById('setContractButton');
         const connectButton = document.getElementById('connectButton');
+        const errorContainer = document.getElementById('errorContainer');
+        const txFormContainer = document.getElementById('txFormContainer');
         const transactionContainer = document.getElementById('transactionContainer');
         const nonceInput = document.getElementById('nonceInput');
         const toInput = document.getElementById('toInput');
         const valueInput = document.getElementById('valueInput');
         const dataInput = document.getElementById('dataInput');
         const submitTxButton = document.getElementById('submitTxButton');
+
+        // Default MultiSig ABI (simplified)
+        const DEFAULT_ABI = [
+            "function executeTransaction(uint256 nonce, address to, uint256 value, bytes calldata data) external",
+            "event TransactionApproved(bytes32 indexed txHash, address indexed approver, uint8 currentApprovals)",
+            "event TransactionEvent(bytes32 indexed txId, address indexed to, uint nonce, bytes data)"
+        ];
+
+        // Validate Ethereum address
+        function isValidAddress(address) {
+            const addressRegex = /^0x[a-fA-F0-9]{40}$/;
+            return addressRegex.test(address);
+        }
+
+        // Set contract address and prepare for interaction
+        async function setContractAddress() {
+            // Reset previous state
+            errorContainer.textContent = '';
+            contract = null;
+            transactions = {};
+            transactionContainer.innerHTML = '';
+
+            const contractAddress = contractAddressInput.value.trim();
+
+            // Validate contract address
+            if (!isValidAddress(contractAddress)) {
+                errorContainer.textContent = 'Invalid contract address!';
+                return;
+            }
+
+            try {
+                // Check if wallet is connected
+                if (!window.ethereum) {
+                    errorContainer.textContent = 'MetaMask not found!';
+                    return;
+                }
+
+                // Create provider
+                const provider = new ethers.BrowserProvider(window.ethereum);
+                
+                // Create contract instance with default ABI
+                contract = new ethers.Contract(contractAddress, DEFAULT_ABI, provider);
+
+                // Enable connect wallet button
+                connectButton.disabled = false;
+                setContractButton.disabled = true;
+                contractAddressInput.disabled = true;
+
+            } catch (error) {
+                console.error('Contract setup failed', error);
+                errorContainer.textContent = `Failed to set contract: ${error.message}`;
+            }
+        }
+
+        // Connect wallet and setup contract interaction
+        async function connectWallet() {
+            try {
+                // Request account access
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                
+                // Create provider and signer
+                const provider = new ethers.BrowserProvider(window.ethereum);
+                signer = await provider.getSigner();
+
+                // Reassign contract with signer
+                contract = new ethers.Contract(
+                    contractAddressInput.value.trim(), 
+                    DEFAULT_ABI, 
+                    signer
+                );
+
+                // Retrieve past transactions
+                transactions = await retrievePastTransactions(contract);
+                renderTransactions();
+
+                // Show transaction form
+                txFormContainer.style.display = 'grid';
+
+                // Setup event listeners
+                setupEventListeners();
+
+                // Update UI
+                connectButton.textContent = 'Connected';
+                connectButton.disabled = true;
+                submitTxButton.disabled = false;
+
+            } catch (error) {
+                console.error('Connection failed', error);
+                errorContainer.textContent = `Wallet connection failed: ${error.message}`;
+            }
+        }
 
         // Retrieve past transactions from blockchain
         async function retrievePastTransactions(contract) {
@@ -194,74 +301,45 @@
             }
         }
 
-        // Connect wallet and setup contract
-        async function connectWallet() {
-            if (!window.ethereum) {
-                alert('MetaMask not found!');
-                return;
-            }
-
-            try {
-                // Request account access
-                await window.ethereum.request({ method: 'eth_requestAccounts' });
+        // Setup event listeners for contract events
+        function setupEventListeners() {
+            // Listen for new TransactionApproved events
+            contract.on('TransactionApproved', (txHash, approver, currentApprovals) => {
+                const txHashStr = txHash.toString();
                 
-                // Create provider and signer
-                const provider = new ethers.BrowserProvider(window.ethereum);
-                signer = await provider.getSigner();
+                // Update or create transaction entry
+                transactions[txHashStr] = {
+                    approvals: Number(currentApprovals),
+                    approvers: [...new Set([
+                        ...(transactions[txHashStr]?.approvers || []), 
+                        approver
+                    ])],
+                    status: 'Pending'
+                };
 
-                // Create contract instance
-                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-
-                // Retrieve past transactions when connecting
-                transactions = await retrievePastTransactions(contract);
                 renderTransactions();
+            });
 
-                // Listen for new TransactionApproved events
-                contract.on('TransactionApproved', (txHash, approver, currentApprovals) => {
-                    const txHashStr = txHash.toString();
-                    
-                    // Update or create transaction entry
-                    transactions[txHashStr] = {
-                        approvals: Number(currentApprovals),
-                        approvers: [...new Set([
-                            ...(transactions[txHashStr]?.approvers || []), 
-                            approver
-                        ])],
-                        status: 'Pending'
-                    };
+            // Listen for new TransactionEvent (completed transactions)
+            contract.on('TransactionEvent', (txId, to, nonce, data) => {
+                const txIdStr = txId.toString();
+                
+                // Update transaction to executed
+                if (transactions[txIdStr]) {
+                    transactions[txIdStr].status = 'Executed';
+                    transactions[txIdStr].to = to.toString();
+                    transactions[txIdStr].nonce = Number(nonce);
+                    transactions[txIdStr].data = data.toString();
+                }
 
-                    renderTransactions();
-                });
-
-                // Listen for new TransactionEvent (completed transactions)
-                contract.on('TransactionEvent', (txId, to, nonce, data) => {
-                    const txIdStr = txId.toString();
-                    
-                    // Update transaction to executed
-                    if (transactions[txIdStr]) {
-                        transactions[txIdStr].status = 'Executed';
-                        transactions[txIdStr].to = to.toString();
-                        transactions[txIdStr].nonce = Number(nonce);
-                        transactions[txIdStr].data = data.toString();
-                    }
-
-                    renderTransactions();
-                });
-
-                connectButton.textContent = 'Connected';
-                connectButton.disabled = true;
-                submitTxButton.disabled = false;
-
-            } catch (error) {
-                console.error('Connection failed', error);
-                alert('Failed to connect wallet');
-            }
+                renderTransactions();
+            });
         }
 
         // Submit transaction with ETH conversion
         async function submitTransaction() {
             if (!contract) {
-                alert('Please connect wallet first');
+                errorContainer.textContent = 'Please set contract and connect wallet first';
                 return;
             }
 
@@ -287,7 +365,7 @@
                 alert('Transaction submitted successfully!');
             } catch (error) {
                 console.error('Transaction submission failed', error);
-                alert(`Transaction failed: ${error.message}`);
+                errorContainer.textContent = `Transaction failed: ${error.message}`;
             }
         }
 
@@ -307,10 +385,12 @@
         }
 
         // Event listeners
+        setContractButton.addEventListener('click', setContractAddress);
         connectButton.addEventListener('click', connectWallet);
         submitTxButton.addEventListener('click', submitTransaction);
         
-        // Initially disable submit button
+        // Initially disable buttons
+        connectButton.disabled = true;
         submitTxButton.disabled = true;
     </script>
 </body>
