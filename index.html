@@ -2,849 +2,316 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MultiSig Wallet UI</title>
+    <title>MultiSig Wallet Transaction Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #6d28d9;
-            --secondary-color: #10b981;
-            --accent-color: #f59e0b;
-            --danger-color: #ef4444;
-            --background-color: #5f5c55;
-            --card-bg: #82cc21; /* Changed from white to light gray */
-            --text-color: #1e293b;
-            --border-radius: 12px;
-            --input-bg: #ffffff; /* New variable for input backgrounds */
+            --bg-primary: #0a192f;
+            --bg-secondary: #112240;
+            --text-primary: #e6f1ff;
+            --text-secondary: #8892b0;
+            --accent-color: #64ffda;
         }
-        
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: var(--text-color);
-            background-color: var(--background-color);
-            background-image: url("pexels-pierre-blache-651604-2834219.jpg");
-            background-position: 0 0, 20px 20px;
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+            background-image: url('pexels-maxfrancis-2246476.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: var(--text-primary);
             margin: 0;
-            padding: 0;
+            padding: 20px;
+            min-height: 100vh;
+            background-attachment: fixed;
         }
 
         .container {
-            max-width: 1100px;
-            margin: 30px auto;
-            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(17, 34, 64, 0.8);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
-        
-        .wallet-app {
-            background-color: var(--card-bg);
-            border-radius: var(--border-radius);
-            box-shadow: 0 6px 24px rgba(0,0,0,0.1);
-            overflow: hidden;
-            border: 1px solid #e2e8f0;
-            border-left: 6px solid var(--primary-color);
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            text-align: center;
+            color: var(--accent-color);
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
-        
-        .header {
-            background: linear-gradient(135deg, #6d28d9, #7c3aed, #8b5cf6);
-            color: white;
-            padding: 25px;
-            display: flex;
-            flex-direction: column;  /* Keep stacking elements vertically */
-            align-items: center;
-            justify-content: center;
-            gap: 15px; /* Add some space between title and image */
+
+        .tx-form {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 30px;
         }
-        
-        .header h1 {
-            margin: 0;
-            font-weight: 600;
-            font-size: 24px;
+
+        input, button {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid var(--text-secondary);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Roboto', sans-serif;
         }
-        
-        .wallet-logo {
-            width: auto;  /* Let width adjust automatically based on height */
-            max-width: 100%; /* Ensure it doesn't overflow container */
-            height: 150px;  /* Set a fixed height */
-            object-fit: contain;  /* This ensures the image maintains its aspect ratio */
-            border: none;
-            border-radius: 0;
-            box-shadow: none;
-        }
-        
-        .image-upload-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .image-upload-btn {
-            background-color: rgba(255,255,255,0.2);
-            border: 1px solid rgba(255,255,255,0.5);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-        
-        .connection-form {
-            background-color: #ecf0f1;
-            padding: 20px;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        
-        input, button, select {
-            padding: 12px 15px;
-            border: 1px solid #ddd;
-            border-radius: var(--border-radius);
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
-        
-        input:focus, select:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
-        }
-        
+
         button {
-            background: linear-gradient(135deg, var(--primary-color), #7c3aed);
-            color: white;
+            background-color: var(--accent-color);
+            color: var(--bg-primary);
             cursor: pointer;
-            border: none;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            border-radius: var(--border-radius);
-            box-shadow: 0 4px 6px rgba(109, 40, 217, 0.25);
+            transition: all 0.3s ease;
+            font-weight: bold;
         }
 
         button:hover {
-            background: linear-gradient(135deg, #5b21b6, #6d28d9);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 8px rgba(109, 40, 217, 0.3);
+            opacity: 0.8;
         }
-        
+
         button:disabled {
-            background-color: #bdc3c7;
+            background-color: var(--text-secondary);
             cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
         }
-        
-        .wallet-info {
-            background: linear-gradient(135deg, rgba(109, 40, 217, 0.05), rgba(16, 185, 129, 0.05));
-            padding: 20px;
-            border-left: 5px solid var(--primary-color);
-            margin: 20px;
-            border-radius: var(--border-radius);
+
+        .transaction-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
 
-        .info-value {
-            font-weight: 600;
-            font-size: 16px;
-            color: var(--primary-color);
+        .transaction-card {
+            background: rgba(25, 50, 80, 0.7);
+            border-radius: 10px;
+            padding: 15px;
+            border-left: 5px solid;
         }
-        
-        .info-item {
-            display: flex;
-            flex-direction: column;
+
+        .transaction-pending {
+            border-left-color: #ffd700;
         }
-        
-        .info-label {
-            font-size: 12px;
-            color: #7f8c8d;
+
+        .transaction-executed {
+            border-left-color: #00ff7f;
+        }
+
+        .transaction-card div {
             margin-bottom: 5px;
-        }
-        
-        
-        
-        .tabs {
-            display: flex;
-            border-bottom: 1px solid #e1e1e1;
-            background-color: #f8fafc;
+            font-size: 0.9em;
+            color: var(--text-secondary);
         }
 
-        .tab {
-            padding: 15px 25px;
-            cursor: pointer;
-            position: relative;
-            color: #64748b;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-
-        .tab:hover {
-            color: var(--primary-color);
-            background-color: rgba(109, 40, 217, 0.05);
-        }
-
-        .tab.active {
-            color: var(--primary-color);
-            background-color: rgb(202, 199, 29);
-            font-weight: 600;
-        }
-
-        .tab.active::after {
-            content: '';
-            position: absolute;
-            bottom: -1px;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-        }
-        
-        .tab-content {
-            display: none;
-            padding: 25px;
-        }
-        
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.4s ease;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .section-title {
-            margin-top: 0;
-            font-size: 20px;
-            border-bottom: 2px solid #ecf0f1;
-            padding-bottom: 10px;
-            color: #34495e;
-        }
-        
-        .owners-list {
-            margin-bottom: 30px;
-        }
-        
-        .owners-list ul {
-            list-style-type: none;
-            padding: 0;
-            margin: 0;
-        }
-        
-        .owners-list li {
-            padding: 12px 15px;
-            border-bottom: 1px solid #ecf0f1;
-            display: flex;
-            align-items: center;
-            transition: all 0.2s ease;
-        }
-        
-        .owners-list li:hover {
-            background-color: rgba(52, 152, 219, 0.05);
-        }
-        
-        .owners-list li::before {
-            content: '👤';
-            margin-right: 10px;
-            font-size: 18px;
-        }
-        
-        .function-box {
-            background-color: rgb(206, 171, 17);
-            border: 1px solid #e2e8f0;
-            padding: 22px;
-            margin-bottom: 25px;
-            border-radius: var(--border-radius);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            transition: all 0.3s ease;
-        }
-
-        .function-box:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 16px rgba(0,0,0,0.08);
-            border-color: #cbd5e1;
-        }
-
-        .function-box h3 {
-            margin-top: 0;
-            color: var(--primary-color);
-            font-size: 18px;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #f1f5f9;
-            padding-bottom: 10px;
-        }
-        
-        .function-form {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        
-        .form-row {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        
-        .form-row input {
-            flex: 1;
-            min-width: 150px;
-        }
-        
-        .status {
-        padding: 14px 18px;
-        margin: 10px 0;
-        border-radius: var(--border-radius);
-        font-size: 14px;
-        position: relative;
-        padding-left: 45px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-    }
-        
-        .status::before {
-            position: absolute;
-            left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 16px;
-        }
-        
-        .success {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05));
-            color: #059669;
-            border-left: 4px solid #10b981;
-        }
-        
-        .success::before {
-            content: '✅';
-        }
-        
-        .error {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
-            color: #b91c1c;
-            border-left: 4px solid #ef4444;
-        }
-        
-        .error::before {
-            content: '❌';
-        }
-        
-        .approve-btn {
-            background: linear-gradient(135deg, var(--secondary-color), #059669);
-            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.25);
-        }
-
-        .approve-btn:hover {
-            background: linear-gradient(135deg, #059669, #10b981);
-            box-shadow: 0 6px 8px rgba(16, 185, 129, 0.3);
-        }
-
-        .revoke-btn {
-            background: linear-gradient(135deg, var(--danger-color), #dc2626);
-            box-shadow: 0 4px 6px rgba(239, 68, 68, 0.25);
-        }
-
-        .revoke-btn:hover {
-            background: linear-gradient(135deg, #dc2626, #ef4444);
-            box-shadow: 0 6px 8px rgba(239, 68, 68, 0.3);
-        }
-        
-        .hidden {
-            display: none;
-        }
-        
-        .tooltip {
-            position: relative;
-            display: inline-block;
-            cursor: pointer;
-        }
-        
-        .tooltip .tooltiptext {
-            visibility: hidden;
-            width: 200px;
-            background-color: #555;
-            color: #fff;
-            text-align: center;
-            border-radius: 6px;
-            padding: 5px;
-            position: absolute;
-            z-index: 1;
-            bottom: 125%;
-            left: 50%;
-            margin-left: -100px;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        
-        .tooltip:hover .tooltiptext {
-            visibility: visible;
-            opacity: 1;
-        }
-        
-        @media (max-width: 768px) {
-            .connection-form {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .tabs {
-                overflow-x: auto;
-                white-space: nowrap;
-            }
-            
-            .form-row {
-                flex-direction: column;
-            }
+        #connectButton {
+            width: 100%;
+            margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="wallet-app">
-            <div class="header">
-                <h1>MultiSig Wallet Dashboard</h1>
-                <img class="wallet-logo" src="https://assets.teenvogue.com/photos/67978c86d3f605283f74a869/1:1/w_960,c_limit/2196079740" alt="Wallet Logo">
-            </div>
-            
-            <!-- Connection Form -->
-            <div class="connection-form">
-                <input type="text" id="rpc-url" placeholder="RPC URL (e.g., https://mainnet.infura.io)" />
-                <input type="text" id="contract-address" placeholder="MultiSig Contract Address" />
-                <button id="connect-button">
-                    <span>Connect Wallet</span>
-                </button>
-            </div>
+        <h1>MultiSig Wallet Tracker</h1>
+        <button id="connectButton">Connect Wallet</button>
 
-            <div id="wallet-info" class="wallet-info hidden">
-                <div class="info-item">
-                    <span class="info-label">Connected Account</span>
-                    <span id="account-address" class="info-value">-</span>
-                </div><br>
-                <div class="info-item">
-                    <span class="info-label">Multisig Wallet Balance</span>
-                    <span id="wallet-balance" class="info-value">-</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Required Signatures</span>
-                    <span id="required-signatures" class="info-value">-</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Owner Status</span>
-                    <span id="is-owner" class="info-value">-</span>
-                </div>
-            </div>
-            
-            <!-- Tabs -->
-            <div class="tabs">
-                <div class="tab active" data-tab="overview">Overview</div>
-                <div class="tab" data-tab="owners">Owners Management</div>
-                <div class="tab" data-tab="transactions">Transactions</div>
-                <div class="tab" data-tab="settings">Settings</div>
-            </div>
-            
-            <!-- Tab Contents -->
-            <div id="overview" class="tab-content active">
-                <h2 class="section-title">Wallet Overview</h2>
-                
-                <div class="owners-list">
-                    <h3>Current Owners</h3>
-                    <ul id="owners-list">
-                        <!-- Will be populated via JS -->
-                    </ul>
-                </div>
-                
-                <div class="function-box">
-                    <h3>Check Nonce Status</h3>
-                    <div class="function-form">
-                        <input type="number" id="nonce-to-check" placeholder="Enter nonce to check" />
-                        <button id="check-nonce-button">Check Nonce</button>
-                        <div id="nonce-result" class="status"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="owners" class="tab-content">
-                <h2 class="section-title">Owners Management</h2>
-                
-                <div class="function-box">
-                    <h3>Add Owner</h3>
-                    <div class="function-form">
-                        <input type="text" id="new-owner-address" placeholder="New owner address" />
-                        <button id="add-owner-button">Add Owner</button>
-                        <div id="add-owner-status" class="status"></div>
-                    </div>
-                </div>
-                
-                <div class="function-box">
-                    <h3>Remove Owner</h3>
-                    <div class="function-form">
-                        <select id="owner-to-remove">
-                            <option value="">Select owner to remove</option>
-                            <!-- Will be populated via JS -->
-                        </select>
-                        <button id="remove-owner-button">Remove Owner</button>
-                        <div id="remove-owner-status" class="status"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="transactions" class="tab-content">
-                <h2 class="section-title">Execute Transaction</h2>
-                
-                <div class="function-box">
-                    <div class="function-form">
-                        <div class="form-row">
-                            <input type="number" id="tx-nonce" placeholder="Nonce" />
-                            <input type="text" id="tx-to" placeholder="To address" />
-                        </div>
-                        <div class="form-row">
-                            <input type="text" id="tx-value" placeholder="Value (ETH)" />
-                            <input type="text" id="tx-data" placeholder="Data (hex)" value="0x" />
-                        </div>
-                        <button id="execute-tx-button">Execute Transaction</button>
-                        <div id="execute-tx-status" class="status"></div>
-                    </div>
-                </div>
-                
-                <div class="function-box">
-                    <h3>Revoke Approval</h3>
-                    <div class="function-form">
-                        <input type="text" id="operation-id" placeholder="Operation ID (hash)" />
-                        <button id="revoke-approval-button">Revoke Approval</button>
-                        <div id="revoke-approval-status" class="status"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="settings" class="tab-content">
-                <h2 class="section-title">Wallet Settings</h2>
-                
-                <div class="function-box">
-                    <h3>Update Required Signatures</h3>
-                    <div class="function-form">
-                        <input type="number" id="new-required-sigs" min="2" placeholder="New required signatures" />
-                        <button id="update-sigs-button">Update Required Signatures</button>
-                        <div id="update-sigs-status" class="status"></div>
-                    </div>
-                </div>
-            </div>
+        <div class="tx-form">
+            <h2>Submit Transaction</h2>
+            <input type="text" id="toInput" placeholder="Recipient Address" required>
+            <input type="number" step="0.00001" id="valueInput" placeholder="Value (ETH)" required>
+            <input type="number" id="nonceInput" placeholder="Nonce" required>
+            <input type="text" id="dataInput" placeholder="Data (optional, hex)">
+            <button id="submitTxButton">Submit Transaction</button>
         </div>
+
+        <div id="transactionContainer" class="transaction-container"></div>
     </div>
-    
-    <!-- Load ethers.js from CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.umd.min.js"></script>
-    
+
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Global variables
-            let provider;
-            let signer;
-            let contract;
-            let currentAccount;
-            let ownersArray = [];
-            let requiredSignatures = 0;
-            let isOwner = false;
-            
-            // DOM elements
-            const connectButton = document.getElementById('connect-button');
-            const rpcUrlInput = document.getElementById('rpc-url');
-            const contractAddressInput = document.getElementById('contract-address');
-            const walletInfoSection = document.getElementById('wallet-info');
-            const accountAddressSpan = document.getElementById('account-address');
-            const walletBalanceSpan = document.getElementById('wallet-balance');
-            const requiredSignaturesSpan = document.getElementById('required-signatures');
-            const isOwnerSpan = document.getElementById('is-owner');
-            const ownersList = document.getElementById('owners-list');
-            const ownerToRemoveSelect = document.getElementById('owner-to-remove');
-            
-           
-            
-            // Contract ABI - minimal for our needs
-            const contractABI = [
-                "function owners(uint256) view returns (address)",
-                "function isOwner(address) view returns (bool)",
-                "function approvals(bytes32, address) view returns (bool)",
-                "function approvalCount(bytes32) view returns (uint8)",
-                "function requiredSignatures() view returns (uint8)",
-                "function usedNonces(uint) view returns (bool)",
-                "function getOwners() view returns (address[])",
-                "function addOwner(address _newOwner)",
-                "function removeOwner(address _owner)",
-                "function executeTransaction(uint nonce, address to, uint value, bytes calldata data)",
-                "function revokeApproval(bytes32 operationId)",
-                "function updateRequiredSignatures(uint8 _newRequiredSignatures)",
-                "function approveOperation(bytes32 operationId)",
-                "event OwnerApproval(bytes32 indexed operationId, address indexed approver, address indexed subject)",
-                "event TransactionExecuted(address to, uint nonce, bytes data)"
-            ];
-            
-            
-            // Tab switching
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.addEventListener('click', function() {
-                    // Remove active class from all tabs
-                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                    
-                    // Add active class to clicked tab
-                    this.classList.add('active');
-                    const tabId = this.getAttribute('data-tab');
-                    document.getElementById(tabId).classList.add('active');
-                });
-            });
-            
-            // Connect to wallet and contract
-            connectButton.addEventListener('click', async function() {
-                try {
-                    const rpcUrl = rpcUrlInput.value.trim();
-                    const contractAddress = contractAddressInput.value.trim();
-                    
-                    if (!rpcUrl || !contractAddress) {
-                        alert('Please enter both RPC URL and contract address');
-                        return;
-                    }
-                    
-                    // Create provider
-                    provider = new ethers.JsonRpcProvider(rpcUrl);
-                    
-                    // Check if MetaMask is available and request account access
-                    if (window.ethereum) {
-                        await window.ethereum.request({ method: 'eth_requestAccounts' });
-                        // Use ethers v6 syntax
-                        const ethersProvider = new ethers.BrowserProvider(window.ethereum);
-                        signer = await ethersProvider.getSigner();
-                        currentAccount = await signer.getAddress();
-                    } else {
-                        alert('MetaMask is not installed. Please install it to use this application.');
-                        return;
-                    }
-                    
-                    // Initialize contract with ethers v6
-                    contract = new ethers.Contract(contractAddress, contractABI, signer);
-                    
-                    // Get wallet balance
-                    const balance = await provider.getBalance(contractAddress);
-                    const formattedBalance = ethers.formatEther(balance);
-                    
-                    // Get wallet info
-                    ownersArray = await contract.getOwners();
-                    requiredSignatures = await contract.requiredSignatures();
-                    isOwner = await contract.isOwner(currentAccount);
-                    
-                    // Update UI
-                    accountAddressSpan.textContent = currentAccount;
-                    walletBalanceSpan.textContent = formattedBalance + ' ETH';
-                    requiredSignaturesSpan.textContent = requiredSignatures.toString();
-                    isOwnerSpan.textContent = isOwner ? 'Yes' : 'No';
-                    
-                    // Show wallet info section
-                    walletInfoSection.classList.remove('hidden');
-                    
-                    // Populate owners list
-                    populateOwnersList();
-                      // Setup function handlers after connection
-                    setupFunctionHandlers();
-                    
-                    // Show success message
-                    showStatus('Connected successfully to multisig wallet!', 'success');
-                } catch (error) {
-                    console.error('Connection Error:', error);
-                    showStatus(`Error connecting: ${error.message}`, 'error');
-                }
-            });
-            
-            // Populate owners list
-            function populateOwnersList() {
-                ownersList.innerHTML = '';
-                ownerToRemoveSelect.innerHTML = '<option value="">Select owner to remove</option>';
+        // Contract details
+        const CONTRACT_ADDRESS = '0x655af9aab14a277ef7812797bd1794da34d397bc';
+        const CONTRACT_ABI = [
+            "function executeTransaction(uint256 nonce, address to, uint256 value, bytes calldata data) external",
+            "event TransactionApproved(bytes32 indexed txHash, address indexed approver, uint8 currentApprovals)",
+            "event TransactionEvent(bytes32 indexed txId, address indexed to, uint nonce, bytes data)"
+        ];
+
+        // Global variables
+        let signer = null;
+        let contract = null;
+        let transactions = {};
+
+        // Elements
+        const connectButton = document.getElementById('connectButton');
+        const transactionContainer = document.getElementById('transactionContainer');
+        const nonceInput = document.getElementById('nonceInput');
+        const toInput = document.getElementById('toInput');
+        const valueInput = document.getElementById('valueInput');
+        const dataInput = document.getElementById('dataInput');
+        const submitTxButton = document.getElementById('submitTxButton');
+
+        // Retrieve past transactions from blockchain
+        async function retrievePastTransactions(contract) {
+            try {
+                // Retrieve past TransactionApproved events
+                const approvedEvents = await contract.queryFilter('TransactionApproved');
                 
-                ownersArray.forEach(owner => {
-                    // Add to overview list
-                    const li = document.createElement('li');
-                    li.textContent = owner;
-                    if (owner.toLowerCase() === currentAccount.toLowerCase()) {
-                        li.textContent += ' (You)';
-                        li.style.fontWeight = 'bold';
-                    }
-                    ownersList.appendChild(li);
-                    
-                    // Add to dropdown for removal
-                    if (owner.toLowerCase() !== currentAccount.toLowerCase()) {
-                        const option = document.createElement('option');
-                        option.value = owner;
-                        option.textContent = owner;
-                        ownerToRemoveSelect.appendChild(option);
+                // Retrieve past TransactionEvent events
+                const executedEvents = await contract.queryFilter('TransactionEvent');
+
+                // Create a map to track transaction states
+                const pastTransactions = {};
+
+                // Process approval events first
+                approvedEvents.forEach(event => {
+                    const { txHash, approver, currentApprovals } = event.args;
+                    const txHashStr = txHash.toString();
+
+                    pastTransactions[txHashStr] = {
+                        approvals: Number(currentApprovals),
+                        approvers: [approver],
+                        status: 'Pending'
+                    };
+                });
+
+                // Update with execution events
+                executedEvents.forEach(event => {
+                    const { txId, to, nonce, data } = event.args;
+                    const txIdStr = txId.toString();
+
+                    if (pastTransactions[txIdStr]) {
+                        pastTransactions[txIdStr].status = 'Executed';
+                        pastTransactions[txIdStr].to = to;
+                        pastTransactions[txIdStr].nonce = Number(nonce);
+                        pastTransactions[txIdStr].data = data;
                     }
                 });
+
+                return pastTransactions;
+            } catch (error) {
+                console.error('Error retrieving past transactions', error);
+                return {};
             }
-            
-            // Function to handle all setup after connection
-            function setupFunctionHandlers() {
-                // Add owner button handler
-                document.getElementById('add-owner-button').addEventListener('click', async function() {
-                    const newOwnerAddress = document.getElementById('new-owner-address').value.trim();
-                    if (!newOwnerAddress) {
-                        showStatus('Please enter a valid address', 'error', 'add-owner-status');
-                        return;
-                    }
-                    
-                    try {
-                        const tx = await contract.addOwner(newOwnerAddress);
-                        await tx.wait();
-                        showStatus('Owner added successfully!', 'success', 'add-owner-status');
-                        
-                        // Refresh owners list
-                        ownersArray = await contract.getOwners();
-                        populateOwnersList();
-                    } catch (error) {
-                        console.error('Error adding owner:', error);
-                        showStatus(`Error adding owner: ${error.message}`, 'error', 'add-owner-status');
-                    }
-                });
-                
-                // Remove owner button handler
-                document.getElementById('remove-owner-button').addEventListener('click', async function() {
-                    const ownerToRemove = document.getElementById('owner-to-remove').value;
-                    if (!ownerToRemove) {
-                        showStatus('Please select an owner to remove', 'error', 'remove-owner-status');
-                        return;
-                    }
-                    
-                    try {
-                        const tx = await contract.removeOwner(ownerToRemove);
-                        await tx.wait();
-                        showStatus('Owner removed successfully!', 'success', 'remove-owner-status');
-                        
-                        // Refresh owners list
-                        ownersArray = await contract.getOwners();
-                        populateOwnersList();
-                    } catch (error) {
-                        console.error('Error removing owner:', error);
-                        showStatus(`Error removing owner: ${error.message}`, 'error', 'remove-owner-status');
-                    }
-                });
-                
-                // Update required signatures button handler
-                document.getElementById('update-sigs-button').addEventListener('click', async function() {
-                    const newSigs = document.getElementById('new-required-sigs').value;
-                    if (!newSigs || newSigs < 1) {
-                        showStatus('Please enter a valid number of signatures', 'error', 'update-sigs-status');
-                        return;
-                    }
-                    
-                    try {
-                        const tx = await contract.updateRequiredSignatures(newSigs);
-                        await tx.wait();
-                        showStatus('Required signatures updated successfully!', 'success', 'update-sigs-status');
-                        
-                        // Refresh required signatures
-                        requiredSignatures = await contract.requiredSignatures();
-                        requiredSignaturesSpan.textContent = requiredSignatures.toString();
-                    } catch (error) {
-                        console.error('Error updating required signatures:', error);
-                        showStatus(`Error updating required signatures: ${error.message}`, 'error', 'update-sigs-status');
-                    }
-                });
-                
-                // Check nonce button handler
-                document.getElementById('check-nonce-button').addEventListener('click', async function() {
-                    const nonceToCheck = document.getElementById('nonce-to-check').value;
-                    if (!nonceToCheck) {
-                        showStatus('Please enter a nonce to check', 'error', 'nonce-result');
-                        return;
-                    }
-                    
-                    try {
-                        const isUsed = await contract.usedNonces(nonceToCheck);
-                        if (isUsed) {
-                            showStatus(`Nonce ${nonceToCheck} has already been used`, 'error', 'nonce-result');
-                        } else {
-                            showStatus(`Nonce ${nonceToCheck} is available for use`, 'success', 'nonce-result');
-                        }
-                    } catch (error) {
-                        console.error('Error checking nonce:', error);
-                        showStatus(`Error checking nonce: ${error.message}`, 'error', 'nonce-result');
-                    }
-                });
-                
-                // Execute transaction button handler
-                document.getElementById('execute-tx-button').addEventListener('click', async function() {
-                    const nonce = document.getElementById('tx-nonce').value;
-                    const to = document.getElementById('tx-to').value;
-                    const valueEth = document.getElementById('tx-value').value;
-                    const data = document.getElementById('tx-data').value;
-                    
-                    if (!nonce || !to) {
-                        showStatus('Please fill in nonce and to address', 'error', 'execute-tx-status');
-                        return;
-                    }
-                    
-                    try {
-                        // Convert ETH to wei
-                        const valueWei = valueEth ? ethers.parseEther(valueEth) : 0;
-                        
-                        const tx = await contract.executeTransaction(nonce, to, valueWei, data);
-                        showStatus('Transaction submitted, waiting for confirmation...', 'success', 'execute-tx-status');
-                        
-                        await tx.wait();
-                        showStatus('Transaction executed successfully!', 'success', 'execute-tx-status');
-                        
-                        // Refresh wallet balance
-                        const balance = await provider.getBalance(contract.target);
-                        walletBalanceSpan.textContent = ethers.formatEther(balance) + ' ETH';
-                        
-                    } catch (error) {
-                        console.error('Error executing transaction:', error);
-                        showStatus(`Error executing transaction: ${error.message}`, 'error', 'execute-tx-status');
-                    }
-                });
-                
-                // Revoke approval button handler
-                document.getElementById('revoke-approval-button').addEventListener('click', async function() {
-                    const operationId = document.getElementById('operation-id').value;
-                    if (!operationId) {
-                        showStatus('Please enter an operation ID', 'error', 'revoke-approval-status');
-                        return;
-                    }
-                    
-                    try {
-                        const tx = await contract.revokeApproval(operationId);
-                        await tx.wait();
-                        showStatus('Approval revoked successfully!', 'success', 'revoke-approval-status');
-                    } catch (error) {
-                        console.error('Error revoking approval:', error);
-                        showStatus(`Error revoking approval: ${error.message}`, 'error', 'revoke-approval-status');
-                    }
-                });
+        }
+
+        // Connect wallet and setup contract
+        async function connectWallet() {
+            if (!window.ethereum) {
+                alert('MetaMask not found!');
+                return;
             }
-            
-            
-            // Function to show status messages
-            function showStatus(message, type, elementId = null) {
-                const statusElement = elementId ? document.getElementById(elementId) : document.createElement('div');
+
+            try {
+                // Request account access
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
                 
-                if (!elementId) {
-                    statusElement.className = `status ${type}`;
-                    statusElement.textContent = message;
+                // Create provider and signer
+                const provider = new ethers.BrowserProvider(window.ethereum);
+                signer = await provider.getSigner();
+
+                // Create contract instance
+                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+                // Retrieve past transactions when connecting
+                transactions = await retrievePastTransactions(contract);
+                renderTransactions();
+
+                // Listen for new TransactionApproved events
+                contract.on('TransactionApproved', (txHash, approver, currentApprovals) => {
+                    const txHashStr = txHash.toString();
                     
-                    // Add to body
-                    document.body.appendChild(statusElement);
+                    // Update or create transaction entry
+                    transactions[txHashStr] = {
+                        approvals: Number(currentApprovals),
+                        approvers: [...new Set([
+                            ...(transactions[txHashStr]?.approvers || []), 
+                            approver
+                        ])],
+                        status: 'Pending'
+                    };
+
+                    renderTransactions();
+                });
+
+                // Listen for new TransactionEvent (completed transactions)
+                contract.on('TransactionEvent', (txId, to, nonce, data) => {
+                    const txIdStr = txId.toString();
                     
-                    // Remove after 5 seconds
-                    setTimeout(() => {
-                        statusElement.remove();
-                    }, 5000);
-                } else {
-                    statusElement.className = `status ${type}`;
-                    statusElement.textContent = message;
-                }
+                    // Update transaction to executed
+                    if (transactions[txIdStr]) {
+                        transactions[txIdStr].status = 'Executed';
+                        transactions[txIdStr].to = to.toString();
+                        transactions[txIdStr].nonce = Number(nonce);
+                        transactions[txIdStr].data = data.toString();
+                    }
+
+                    renderTransactions();
+                });
+
+                connectButton.textContent = 'Connected';
+                connectButton.disabled = true;
+                submitTxButton.disabled = false;
+
+            } catch (error) {
+                console.error('Connection failed', error);
+                alert('Failed to connect wallet');
             }
-        });
+        }
+
+        // Submit transaction with ETH conversion
+        async function submitTransaction() {
+            if (!contract) {
+                alert('Please connect wallet first');
+                return;
+            }
+
+            try {
+                const nonce = BigInt(nonceInput.value);
+                const to = toInput.value;
+                
+                // Convert ETH to wei
+                const valueInEth = parseFloat(valueInput.value);
+                const value = BigInt(ethers.parseEther(valueInEth.toString()));
+                
+                const data = dataInput.value || '0x';
+
+                const tx = await contract.executeTransaction(nonce, to, value, data);
+                await tx.wait();
+
+                // Clear inputs
+                nonceInput.value = '';
+                toInput.value = '';
+                valueInput.value = '';
+                dataInput.value = '';
+
+                alert('Transaction submitted successfully!');
+            } catch (error) {
+                console.error('Transaction submission failed', error);
+                alert(`Transaction failed: ${error.message}`);
+            }
+        }
+
+        // Render transactions to the DOM
+        function renderTransactions() {
+            transactionContainer.innerHTML = Object.entries(transactions).map(([txHash, txDetails]) => `
+                <div class="transaction-card ${txDetails.status === 'Executed' ? 'transaction-executed' : 'transaction-pending'}">
+                    <div><strong>Transaction Hash:</strong> ${txHash.substring(0,10)}...</div>
+                    <div><strong>Approvals:</strong> ${txDetails.approvals || 0}/2 
+                        ${txDetails.status === 'Executed' ? '✅' : ''}</div>
+                    <div><strong>Approvers:</strong> ${(txDetails.approvers || []).join(', ')}</div>
+                    <div><strong>Status:</strong> ${txDetails.status || 'Pending'}</div>
+                    ${txDetails.to ? `<div><strong>To:</strong> ${txDetails.to}</div>` : ''}
+                    ${txDetails.nonce !== undefined ? `<div><strong>Nonce:</strong> ${txDetails.nonce}</div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        // Event listeners
+        connectButton.addEventListener('click', connectWallet);
+        submitTxButton.addEventListener('click', submitTransaction);
+        
+        // Initially disable submit button
+        submitTxButton.disabled = true;
     </script>
 </body>
 </html>
